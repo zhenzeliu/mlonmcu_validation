@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include <string.h>
+#include <inttypes.h>
 
 typedef enum status
 {
@@ -12,6 +14,6 @@ typedef enum status
 }MLIF_PROCESS_STATUS;
 
 MLIF_PROCESS_STATUS mlif_porcess_input(void *model_input_ptr, size_t model_input_size);
-MLIF_PROCESS_STATUS mlif_porcess_output(void *model_output_ptr, size_t model_output_size);
+MLIF_PROCESS_STATUS mlif_porcess_output(const void *model_output_ptr, size_t model_output_size);
 
 #endif
