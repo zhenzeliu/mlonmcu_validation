@@ -32,12 +32,14 @@ typedef enum datatype
     MLIF_DTYPE_RAW
 }MLIF_DATATYPE;
 
+// data storage order
 typedef enum data_order
 {
-    MLIF_C_ORDER,
-    MLIF_FORTRAN_ORDER
+    MLIF_C_ORDER,       // row first
+    MLIF_FORTRAN_ORDER  // column first
 }MLIF_DATA_ORDER;
 
+// data configuration
 typedef struct data_config
 {
     size_t row;
@@ -50,5 +52,6 @@ MLIF_PROCESS_STATUS mlif_porcess_input(void *model_input_ptr, size_t model_input
 MLIF_PROCESS_STATUS mlif_porcess_output(const void *model_output_ptr, size_t model_output_size);
 
 MLIF_IO_STATUS mlif_io_write_npy(const char *npy_file_path, const mlif_data_config *config, const void *data);
+MLIF_IO_STATUS mlif_io_stdout(const mlif_data_config *config, const void *data);
 
 #endif
