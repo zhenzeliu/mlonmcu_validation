@@ -1,34 +1,17 @@
-#include "mlif.h"
-
-MLIF_PROCESS_STATUS mlif_porcess_input(void *model_input_ptr, size_t model_input_size)
-{
-    return MLIF_PROCESS_SUCCESS;
-}
-
-MLIF_PROCESS_STATUS mlif_porcess_output(const void *model_output_ptr, size_t model_output_size)
-{
-    // check model outputs pointer and size
-    if ((model_output_ptr == NULL) || (model_output_size == 0))
-    {
-        printf("[ERROR]Model outputs NULL\n");
-        return MLIF_MODEL_OUTPUT_NULL;
-    }
-
-    return MLIF_PROCESS_SUCCESS;
-}
+#include "mlifio.h"
 
 /**
  * Interface writing 2-dimensional data to .npy file
 */
-MLIF_IO_STATUS mlif_io_write_npy(const char *npy_file_path, const mlif_data_config *config, const void *data)
+MLIF_IO_STATUS mlifio_to_npy(const char *npy_file_path, const mlif_data_config *config, const void *data)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
 
     const char mode[] = "wb+";
-    const char magic_string[6] = {0x93, 'N', 'U', 'M', 'P', 'Y'};
-    const char major_version[1] = {0x01};
-    const char minor_version[1] = {0x00};
-    const char length[2] = {0x76, 0x00};
+    const unsigned char magic_string[6] = {0x93, 'N', 'U', 'M', 'P', 'Y'};
+    const unsigned char major_version[1] = {0x01};
+    const unsigned char minor_version[1] = {0x00};
+    const unsigned char length[2] = {0x76, 0x00};
 
     char type = 'V';
     int size = 1;
@@ -74,7 +57,7 @@ MLIF_IO_STATUS mlif_io_write_npy(const char *npy_file_path, const mlif_data_conf
 /**
  * Interface output 2-dimensional data via stdout
 */
-MLIF_IO_STATUS mlif_io_stdout(const mlif_data_config *config, const void *data)
+MLIF_IO_STATUS mlifio_to_stdout(const mlif_data_config *config, const void *data)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
     
@@ -110,6 +93,13 @@ MLIF_IO_STATUS mlif_io_stdout(const mlif_data_config *config, const void *data)
         fwrite(tail, sizeof(char), 1, stdout);
         fflush(stdout);
     }
+
+    return MLIF_IO_SUCCESS;
+}
+
+MLIF_IO_STATUS mlifio_to_uart(const mlif_data_config *config, const void *data)
+{
+    // In progress...
 
     return MLIF_IO_SUCCESS;
 }

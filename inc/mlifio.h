@@ -1,5 +1,5 @@
-#ifndef _MLIF_H_
-#define _MLIF_H_
+#ifndef _MLIFIO_H_
+#define _MLIFIO_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,10 +48,8 @@ typedef struct data_config
     MLIF_DATA_ORDER order;
 }mlif_data_config;
 
-MLIF_PROCESS_STATUS mlif_porcess_input(void *model_input_ptr, size_t model_input_size);
-MLIF_PROCESS_STATUS mlif_porcess_output(const void *model_output_ptr, size_t model_output_size);
-
-MLIF_IO_STATUS mlif_io_write_npy(const char *npy_file_path, const mlif_data_config *config, const void *data);
-MLIF_IO_STATUS mlif_io_stdout(const mlif_data_config *config, const void *data);
+MLIF_IO_STATUS mlifio_to_npy(const char *npy_file_path, const mlif_data_config *config, const void *data);
+MLIF_IO_STATUS mlifio_to_stdout(const mlif_data_config *config, const void *data);
+MLIF_IO_STATUS mlifio_to_uart(const mlif_data_config *config, const void *data);
 
 #endif

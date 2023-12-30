@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <inttypes.h>
-#include "mlif.h"
+
+#include "mlifio.h"
 
 #define SIZE 25
 
@@ -18,10 +19,8 @@ int main(void)
     cfg.dtype = MLIF_DTYPE_UINT16;
     cfg.order = MLIF_FORTRAN_ORDER;
 
-    // mlif_porcess_output(a, sizeof(*a) * SIZE);
-    // mlif_io_write_npy("./a.npy", &cfg, a);
-
-    mlif_io_stdout(&cfg, a);
+    // mlifio_to_npy("./out.npy", &cfg, a);
+    mlifio_to_stdout(&cfg, a);
 
     return 0;
 }
