@@ -1,9 +1,9 @@
 #include "mlifio.h"
 
 /**
- * Interface writing 2-dimensional data to .npy file
+ * Interface writing 2-dimensional data to file (.npy or .bin)
 */
-MLIF_IO_STATUS mlifio_to_npy(const char *npy_file_path, const mlif_data_config *config, const void *data)
+MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *npy_file_path, const mlif_data_config *config, const void *data)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
 
@@ -55,9 +55,9 @@ MLIF_IO_STATUS mlifio_to_npy(const char *npy_file_path, const mlif_data_config *
 }
 
 /**
- * Interface output 2-dimensional data via stdout
+ * Interface output 2-dimensional data via stdout (plaintext or binary)
 */
-MLIF_IO_STATUS mlifio_to_stdout(const mlif_data_config *config, const void *data)
+MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_config *config, const void *data)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
     
@@ -78,28 +78,33 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_data_config *config, const void *data
         default: size = 1; break;
     }
 
-    char header[20] = "";
-    char num_char[10] = "";
-    const char tail[] = "\n";
-    for (size_t i = 0; i < row; i++)
+    if (mode == MLIF_STDIO_PLAIN)
     {
-        sprintf(header, "Output[%lu]:", i);
-        fwrite(header, sizeof(char), strlen(header), stdout);
-        for (size_t j = 0; j < col*size; j++)
+        char header[20] = "";
+        char num_char[10] = "";
+        const char tail[] = "\n";
+        for (size_t i = 0; i < row; i++)
         {
-            sprintf(num_char, " 0x%02x", ((unsigned char *)data)[col*size*i+j]);
-            fwrite(num_char, sizeof(char), strlen(num_char), stdout);
+            sprintf(header, "Output[%lu]:", i);
+            fwrite(header, sizeof(char), strlen(header), stdout);
+            for (size_t j = 0; j < col*size; j++)
+            {
+                sprintf(num_char, " 0x%02x", ((unsigned char *)data)[col*size*i+j]);
+                fwrite(num_char, sizeof(char), strlen(num_char), stdout);
+            }
+            fwrite(tail, sizeof(char), 1, stdout);
+            fflush(stdout);
         }
-        fwrite(tail, sizeof(char), 1, stdout);
+    }
+    else if (mode == MLIF_STDIO_BIN)
+    {
+        fwrite(data, sizeof(char), row * col * size, stdout);
         fflush(stdout);
     }
-
-    return MLIF_IO_SUCCESS;
-}
-
-MLIF_IO_STATUS mlifio_to_uart(const mlif_data_config *config, const void *data)
-{
-    // In progress...
-
+    else
+    {
+        return MLIF_IO_ERROR;
+    }
+    
     return MLIF_IO_SUCCESS;
 }

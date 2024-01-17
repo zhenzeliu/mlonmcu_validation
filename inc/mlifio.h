@@ -48,8 +48,19 @@ typedef struct data_config
     MLIF_DATA_ORDER order;
 }mlif_data_config;
 
-MLIF_IO_STATUS mlifio_to_npy(const char *npy_file_path, const mlif_data_config *config, const void *data);
-MLIF_IO_STATUS mlifio_to_stdout(const mlif_data_config *config, const void *data);
-MLIF_IO_STATUS mlifio_to_uart(const mlif_data_config *config, const void *data);
+typedef enum stdio_mode
+{
+    MLIF_STDIO_BIN,
+    MLIF_STDIO_PLAIN
+}mlif_stdio_mode;
+
+typedef enum file_mode
+{
+    MLIF_FILE_NPY,
+    MLIF_FILE_BIN
+}mlif_file_mode;
+
+MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode mode, const char *npy_file_path, const mlif_data_config *config, const void *data);
+MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_config *config, const void *data);
 
 #endif
