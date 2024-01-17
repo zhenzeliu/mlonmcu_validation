@@ -3,24 +3,24 @@
 
 #include "mlifio.h"
 
-#define SIZE 25
+#define SIZE 20
 
 int main(void)
 {
-    uint16_t a[SIZE] = {0xff, 0xaa, 0xbb, 0xcc, 0xdd,
-                        0xee, 0x17, 0x18, 0x19, 0x20,
-                        0x64, 0x78, 0x08, 0x07, 0x06,
-                        0x05, 0x04, 0x03, 0x02, 0x01,
-                        0x88, 0x88, 0x88, 0x88, 0x88};
+    int16_t a[SIZE] = {0x61, 0x62, 0x63, 0x64, 0x65,
+                        0x66, 0x67, 0x68, 0x69, 0x6A,
+                        0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
+                        0x70, 0x71, 0x72, 0x73, 0x74};
 
     mlif_data_config cfg;
-    cfg.row = 5;
-    cfg.col = 5;
-    cfg.dtype = MLIF_DTYPE_UINT16;
-    cfg.order = MLIF_FORTRAN_ORDER;
+    cfg.row = 1;
+    cfg.col = 20;
+    cfg.dtype = MLIF_DTYPE_INT16;
+    cfg.order = MLIF_C_ORDER;
 
-    // mlifio_to_npy("./out.npy", &cfg, a);
-    mlifio_to_stdout(&cfg, a);
+    mlifio_to_stdout(MLIF_STDIO_BIN, &cfg, a);
+
+    mlifio_to_file(MLIF_FILE_BIN, "out.bin", &cfg, a);
 
     return 0;
 }
