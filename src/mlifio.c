@@ -1,8 +1,14 @@
 #include "mlifio.h"
 
 /**
- * Interface writing 2-dimensional data to file (.npy or .bin)
-*/
+ * @brief Interface writing 2-dimensional data to file (.npy or .bin format)
+ * 
+ * @param fmode Either MLIF_FILE_BIN or MLIF_FILE_NPY.
+ * @param file_path Path including file name and suffix to store.
+ * @param config Data configuration which contains datatype, shape and further informations.
+ * @param data Data pointer
+ * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ */
 MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path, const mlif_data_config *config, const void *data)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
@@ -74,8 +80,13 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
 }
 
 /**
- * Interface output 2-dimensional data via stdout (plaintext or binary)
-*/
+ * @brief Interface output 2-dimensional data via stdout (plaintext or binary)
+ * 
+ * @param mode Either MLIF_STDIO_BIN or MLIF_STDIO_PLAIN.
+ * @param config Data configuration which contains datatype, shape and further informations.
+ * @param data Data pointer.
+ * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ */
 MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_config *config, const void *data)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
@@ -124,6 +135,29 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_conf
     {
         return MLIF_IO_ERROR;
     }
+    
+    return MLIF_IO_SUCCESS;
+}
+
+MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_path, const mlif_data_config *config, void *data)
+{
+    if (fmode == MLIF_FILE_NPY)
+    {
+
+    }
+    else if (fmode == MLIF_FILE_BIN)
+    {
+        /* code */
+    }
+    else
+    {
+
+    }
+    return MLIF_IO_SUCCESS;
+}
+
+MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, const mlif_data_config *config, void *data)
+{
     
     return MLIF_IO_SUCCESS;
 }
