@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.25)
 
 project(test)
 
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
+
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
