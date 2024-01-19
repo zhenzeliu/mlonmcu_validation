@@ -1,5 +1,7 @@
 #include "mlifio.h"
 
+#define BUFFER_SIZE 2048
+
 /**
  * @brief Interface writing 2-dimensional data to file (.npy or .bin format)
  * 
@@ -156,8 +158,52 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
     return MLIF_IO_SUCCESS;
 }
 
-MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, const mlif_data_config *config, void *data)
+/**
+ * @brief Interface get 2-dimensional input data via stdin (plaintext or binary)
+ * 
+ * @param mode Either MLIF_STDIO_BIN or MLIF_STDIO_PLAIN.
+ * @param config config Data configuration which contains datatype, shape and further informations.
+ * @param data Data pointer.
+ * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ */
+MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, mlif_data_config *config, void *data)
 {
-    
+    char buffer[BUFFER_SIZE];
+    char *token;
+    int cnt = 0;
+    int ptr = 0;
+    size_t col = config->col;
+    // plain text should looks like:
+    // 10,20,30,40,15,25,10,23,255,255,10
+    // 13,15,12,98,22,33,95,69,0,0,122,243
+    if (mode == MLIF_STDIO_PLAIN)
+    {
+        while (fgets(buffer, sizeof(buffer), stdin) != NULL)
+        {
+            if (strcmp(buffer, "\n") == 0) break;
+            ptr = 0;
+            token = strtok(buffer, ",");
+            while (token != NULL)
+            {
+                ((char *)data)[cnt*col+ptr] = (char)atoi(token);
+                token = strtok(NULL, ",");
+                ptr++;
+            }
+            cnt++;
+        }
+        config->row = cnt+1;
+    }
+    else if (mode == MLIF_STDIO_BIN)
+    {
+        // can only process one input each invokation
+        // for multi-input need more information: end of input...
+        size_t length = 0;
+        length = fread(buffer, sizeof(char), col, stdin);
+        memcpy(data, buffer, length);
+    }
+    else
+    {
+        return MLIF_IO_ERROR;
+    }
     return MLIF_IO_SUCCESS;
 }
