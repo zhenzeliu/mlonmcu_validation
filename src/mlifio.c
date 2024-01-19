@@ -43,7 +43,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
         
         char buffer[128] = "";
         char header[128] = "";
-        sprintf(buffer, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%llu, %llu), }", type, size, order, row, col);
+        sprintf(buffer, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu), }", type, size, order, row, col);
         sprintf(header, "%-*s", 118, buffer);
         header[117] = '\n';
 
@@ -117,7 +117,7 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_conf
         const char tail[] = "\n";
         for (size_t i = 0; i < row; i++)
         {
-            sprintf(header, "Output[%llu]:", i);
+            sprintf(header, "Output[%zu]:", i);
             fwrite(header, sizeof(char), strlen(header), stdout);
             for (size_t j = 0; j < col*size; j++)
             {
