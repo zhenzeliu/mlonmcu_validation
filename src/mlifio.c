@@ -217,11 +217,14 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
     }
     else if (fmode == MLIF_FILE_BIN)
     {
-        /* code */
+        FILE *file_ptr = NULL;
+        file_ptr = fopen(file_path, mode);
+        if (file_ptr == NULL) return MLIF_IO_ERROR;
+        fread(data, sizeof(char), config->col, file_ptr);
     }
     else
     {
-
+        return MLIF_IO_ERROR;
     }
     return MLIF_IO_SUCCESS;
 }
