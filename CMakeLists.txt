@@ -8,10 +8,10 @@ set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # build mlif static library
-add_library(mlifio STATIC ${INC_DIR}/mlifio.h ${SRC_DIR}/mlifio.c)
+add_library(mlifio STATIC ${SRC_DIR}/mlifio.c)
 target_include_directories(mlifio PUBLIC ${INC_DIR})
 
 project(test)
 
-add_executable(test test.c)
+add_executable(test ${SRC_DIR}/test.c)
 target_link_libraries(test PUBLIC mlifio)

@@ -42,6 +42,10 @@ typedef enum data_order
 // data configuration
 typedef struct data_config
 {
+    size_t nbatch;
+    size_t ninput;
+    size_t ndim;
+    size_t *shape;
     size_t row;
     size_t col;
     MLIF_DATATYPE dtype;
