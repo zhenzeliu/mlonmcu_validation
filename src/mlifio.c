@@ -17,6 +17,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
 
     int size = 1;
+    int dsize = 1;
     char type = 'V';
     switch (config->dtype)
     {
@@ -30,6 +31,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
         case MLIF_DTYPE_RAW:
         default: type = 'V'; size = 1; break;
     }
+    dsize = size;
     for (size_t i = 0; i < config->ndim; i++)
     {
         size *= config->shape[i];   // single input size in bytes
@@ -52,19 +54,19 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
             // write header information to .npy file
             fwrite(magic_string, sizeof(int8_t), 8, fp);
             fwrite(&length, sizeof(int8_t), 2, fp);
-            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, size, order, config->nbatch, config->ninput);
+            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->ninput);
             for (size_t i = 0; i < config->ndim; i++)
                 fprintf(fp, "%zu, ", config->shape[i]);
             fseek(fp, -2, SEEK_CUR);
             fprintf(fp, "), }");
             fprintf(fp, "%*s\n", (NPY_HEADER_SIZE - 1) - (int)ftell(fp), " ");
-            fwrite(data, sizeof(int8_t), size, fp);     // write raw data
+            fwrite(data, sizeof(int8_t), size * config->ninput, fp);     // write raw data
             fclose(fp);
         }
         else
         {
             fseek(fp, 0, SEEK_END);
-            fwrite(data, sizeof(int8_t), size, fp);
+            fwrite(data, sizeof(int8_t), size * config->ninput, fp);
             fclose(fp);
         }
         
@@ -73,7 +75,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
     {
         FILE *fp = NULL;
         fp = fopen(file_path, "ab+");
-        fwrite(data, sizeof(int8_t), size, fp);
+        fwrite(data, sizeof(int8_t), size * config->ninput / config->nbatch, fp);
         fclose(fp);
     }
     else
