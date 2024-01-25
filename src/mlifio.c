@@ -54,19 +54,19 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
             // write header information to .npy file
             fwrite(magic_string, sizeof(int8_t), 8, fp);
             fwrite(&length, sizeof(int8_t), 2, fp);
-            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->nsample);
+            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->nsample / config->nbatch);
             for (size_t i = 0; i < config->ndim; i++)
                 fprintf(fp, "%zu, ", config->shape[i]);
             fseek(fp, -2, SEEK_CUR);
             fprintf(fp, "), }");
             fprintf(fp, "%*s\n", (NPY_HEADER_SIZE - 1) - (int)ftell(fp), " ");
-            fwrite(data, sizeof(int8_t), size * config->nsample, fp);     // write raw data
+            fwrite(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);     // write raw data
             fclose(fp);
         }
         else
         {
             fseek(fp, 0, SEEK_END);
-            fwrite(data, sizeof(int8_t), size * config->nsample, fp);
+            fwrite(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
             fclose(fp);
         }
         
@@ -75,7 +75,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
     {
         FILE *fp = NULL;
         fp = fopen(file_path, "ab+");
-        fwrite(data, sizeof(int8_t), size * config->nsample, fp);
+        fwrite(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
         fclose(fp);
     }
     else
@@ -120,9 +120,9 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_co
     if (iomode == MLIF_STDIO_PLAIN)
     {
         fprintf(stdout, "Batch[%zu]:\n", ibatch);
-        for (size_t i = 0; i < config->nsample; i++)
+        for (size_t i = 0; i < (config->nsample / config->nbatch); i++)
         {
-            fprintf(stdout, "Output[%zu]:", config->nsample * ibatch + i);
+            fprintf(stdout, "Output[%zu]:", (config->nsample / config->nbatch) * ibatch + i);
             for (size_t j = 0; j < size; j++)
             {
                 fprintf(stdout, " 0x%02x", ((uint8_t *)data)[i*size+j]);
@@ -133,7 +133,7 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_co
     }
     else if (iomode == MLIF_STDIO_BIN)
     {
-        for (size_t i = 0; i < config->nsample; i++)
+        for (size_t i = 0; i < (config->nsample / config->nbatch); i++)
         {
             fprintf(stdout, "-?-");
             fwrite(data+i*size, sizeof(uint8_t), size, stdout);
@@ -218,10 +218,10 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
             if (!i)
                 config->nbatch = atoi(buffer);
             else
-                config->nsample = atoi(buffer);
+                config->nsample = atoi(buffer) * config->nbatch;
         }
         fseek(fp, offset + 10 + idx * size, SEEK_SET);
-        fread(data, sizeof(int8_t), size * config->nsample, fp);
+        fread(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
         fclose(fp);
     }
     else if (fmode == MLIF_FILE_BIN)
@@ -247,7 +247,7 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
         fp = fopen(file_path, mode);
         if (fp == NULL) return MLIF_IO_ERROR;
         fseek(fp, 0, SEEK_END);
-        config->nsample = ftell(fp) / (size * config->nbatch);
+        config->nsample = ftell(fp) / size;
         fseek(fp, idx * size, SEEK_SET);
         fread(data, sizeof(int8_t), size, fp);
     }
@@ -291,7 +291,7 @@ MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode iomode, mlif_data_config 
             }
             cnt++;
         }
-        config->row = (cnt > 0) ? cnt : 1;
+        config->nsample = (cnt > 0) ? cnt : 1;
         fflush(stdin);
     }
     else if (iomode == MLIF_STDIO_BIN)

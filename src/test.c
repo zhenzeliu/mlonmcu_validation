@@ -24,37 +24,37 @@ int main(void)
 
     size_t shape[2] = {1, 3};
     cfg.nbatch = 3;                 // number of batches
-    cfg.nsample = 3;                 // number of inputs/outputs for each batch
+    cfg.nsample = 9;                // number of total inputs/outputs
     cfg.ndim = 2;                   // dimension of a single input, in this case is {1, 3}
     cfg.shape = shape;              // data shape for each input is 1x3
     cfg.dtype = MLIF_DTYPE_INT8;    // dtype int8
     cfg.order = MLIF_C_ORDER;       // row first
 
     // test on output via .bin file
-    for (size_t i = 0; i < cfg.nbatch; i++)
+    for (size_t i = 0; i < (cfg.nsample / cfg.nbatch); i++)
     {
-        // mlifio_to_file(MLIF_FILE_BIN, "out.bin", &cfg, batches[i]);
-        // mlifio_to_stdout(MLIF_STDIO_BIN, &cfg, batches[i], i);
+        mlifio_to_file(MLIF_FILE_BIN, "out.bin", &cfg, batches[i]);
+        mlifio_to_stdout(MLIF_STDIO_BIN, &cfg, batches[i], i);
     }
     
     // test on output via .npy file
-    for (size_t i = 0; i < cfg.nbatch; i++)
+    for (size_t i = 0; i < (cfg.nsample / cfg.nbatch); i++)
     {
-        // mlifio_to_file(MLIF_FILE_NPY, "out.npy", &cfg, batches[i]);
-        // mlifio_to_stdout(MLIF_STDIO_PLAIN, &cfg, batches[i], i);
+        mlifio_to_file(MLIF_FILE_NPY, "out.npy", &cfg, batches[i]);
+        mlifio_to_stdout(MLIF_STDIO_PLAIN, &cfg, batches[i], i);
     }
     // Because MLonMCU does not know how many input will be fed,
     // the initial size of array to accept data from file is fixed as single input size,
     // when generating the mlif code
     int8_t data[3] = {};
-    cfg.nbatch = 3;
     cfg.nsample = 0;
     mlifio_from_file(MLIF_FILE_BIN, "out.bin", &cfg, data, 0);
     printf("Input[0]: %d, %d, %d\n", data[0], data[1], data[2]);
-    for (size_t i = 1; i < cfg.nbatch * cfg.nsample; i++)
+    for (size_t i = 1; i < cfg.nsample; i++)
     {
         mlifio_from_file(MLIF_FILE_BIN, "out.bin", &cfg, data, i);
         printf("Input[%zu]: %d, %d, %d\n", i, data[0], data[1], data[2]);
     }
+    
     return 0;
 }
