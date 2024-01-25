@@ -156,27 +156,27 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_co
  * @param file_path Path including file name and suffix to store.
  * @param config Data configuration which contains datatype, shape and further informations.
  * @param data Data pointer
+ * @param idx Index of inputs
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_path, mlif_data_config *config, void *data)
+MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_path, mlif_data_config *config, void *data, const size_t idx)
 {
     const char mode[] = "rb";
     char dtype[3];
 
     if (fmode == MLIF_FILE_NPY)
     {
+        int cnt;
         char tmp;
         char buffer[10] = {};
         size_t size = 1;
-        size_t row = 0;
-        size_t col = 0;
-        int cnt = 0;
         short offset = 0;
         char header_length[2] = {};
+
         FILE *fp = NULL;
         fp = fopen(file_path, mode);
         if (fp == NULL) return MLIF_IO_ERROR;
-        fseek(fp, 8, SEEK_SET);
+        fseek(fp, 8, SEEK_SET);         // jump over the dummy bytes
         fread(header_length, sizeof(char), 2, fp);
         offset = header_length[0] + 256 * header_length[1];
 
@@ -190,45 +190,66 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
         else if (!strcmp(dtype, "u4")) {config->dtype = MLIF_DTYPE_UINT32; size = 4;}
         else if (!strcmp(dtype, "f4")) {config->dtype = MLIF_DTYPE_FLOAT; size = 4;}
         else {config->dtype = MLIF_DTYPE_RAW; size = 1;}
-
+        
+        for (size_t i = 0; i < config->ndim; i++)
+        {
+            size *= config->shape[i];   // single input size in bytes
+        }
         fseek(fp, 20, SEEK_CUR);
         if (fgetc(fp) == 'F') config->order = MLIF_C_ORDER;
         else config->order = MLIF_FORTRAN_ORDER;
-
         fseek(fp, 16, SEEK_CUR);
-        tmp = fgetc(fp);
-        while (tmp != ',')
+        // get number of batch and number of inputs per batch
+        for (size_t i = 0; i < 2; i++)
         {
-            buffer[cnt] = tmp;
+            cnt = 0;
+            memset(buffer, 0, sizeof(buffer));
             tmp = fgetc(fp);
-            cnt++;
+            while (tmp != ',')
+            {
+                if ((tmp >= '0') && (tmp <= '9'))
+                {
+                    buffer[cnt] = tmp;
+                    cnt++;
+                }
+                tmp = fgetc(fp);
+            }
+            fseek(fp, 1, SEEK_CUR);
+            if (!i)
+                config->nbatch = atoi(buffer);
+            else
+                config->nsample = atoi(buffer);
         }
-        row = atoi(buffer);
-
-        fseek(fp, 1, SEEK_CUR);
-        cnt = 0;
-        memset(buffer, 0, sizeof(buffer));
-        tmp = fgetc(fp);
-        while (tmp != ')')
-        {
-            buffer[cnt] = tmp;
-            tmp = fgetc(fp);
-            cnt++;
-        }
-        col = atoi(buffer);
-        config->row = row;
-        config->col = col;
-
-        fseek(fp, offset+10, SEEK_SET);
-        fread(data, sizeof(char), row*col*size, fp);
+        fseek(fp, offset + 10 + idx * size, SEEK_SET);
+        fread(data, sizeof(int8_t), size * config->nsample, fp);
         fclose(fp);
     }
     else if (fmode == MLIF_FILE_BIN)
     {
+        size_t size = 1;
+        switch (config->dtype)
+        {
+            case MLIF_DTYPE_INT8: size = 1; break;
+            case MLIF_DTYPE_INT16: size = 2; break;
+            case MLIF_DTYPE_INT32: size = 4; break;
+            case MLIF_DTYPE_UINT8: size = 1; break;
+            case MLIF_DTYPE_UINT16: size = 2; break;
+            case MLIF_DTYPE_UINT32: size = 4; break;
+            case MLIF_DTYPE_FLOAT: size = 4; break;
+            case MLIF_DTYPE_RAW:
+            default: size = 1; break;
+        }
+        for (size_t i = 0; i < config->ndim; i++)
+        {
+            size *= config->shape[i];   // single input size in bytes
+        }
         FILE *fp = NULL;
         fp = fopen(file_path, mode);
         if (fp == NULL) return MLIF_IO_ERROR;
-        fread(data, sizeof(char), config->col, fp);
+        fseek(fp, 0, SEEK_END);
+        config->nsample = ftell(fp) / (size * config->nbatch);
+        fseek(fp, idx * size, SEEK_SET);
+        fread(data, sizeof(int8_t), size, fp);
     }
     else
     {
