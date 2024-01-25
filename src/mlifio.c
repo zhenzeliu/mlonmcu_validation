@@ -54,19 +54,19 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
             // write header information to .npy file
             fwrite(magic_string, sizeof(int8_t), 8, fp);
             fwrite(&length, sizeof(int8_t), 2, fp);
-            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->ninput);
+            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->nsample);
             for (size_t i = 0; i < config->ndim; i++)
                 fprintf(fp, "%zu, ", config->shape[i]);
             fseek(fp, -2, SEEK_CUR);
             fprintf(fp, "), }");
             fprintf(fp, "%*s\n", (NPY_HEADER_SIZE - 1) - (int)ftell(fp), " ");
-            fwrite(data, sizeof(int8_t), size * config->ninput, fp);     // write raw data
+            fwrite(data, sizeof(int8_t), size * config->nsample, fp);     // write raw data
             fclose(fp);
         }
         else
         {
             fseek(fp, 0, SEEK_END);
-            fwrite(data, sizeof(int8_t), size * config->ninput, fp);
+            fwrite(data, sizeof(int8_t), size * config->nsample, fp);
             fclose(fp);
         }
         
@@ -75,7 +75,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
     {
         FILE *fp = NULL;
         fp = fopen(file_path, "ab+");
-        fwrite(data, sizeof(int8_t), size * config->ninput / config->nbatch, fp);
+        fwrite(data, sizeof(int8_t), size * config->nsample, fp);
         fclose(fp);
     }
     else
@@ -92,14 +92,12 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
  * @param mode Either MLIF_STDIO_BIN or MLIF_STDIO_PLAIN.
  * @param config Data configuration which contains datatype, shape and further informations.
  * @param data Data pointer.
+ * @param ibatch Batch indicator to show that the interface is playing with i-th batch
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_config *config, const void *data)
+MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_config *config, const void *data, const size_t ibatch)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
-    
-    size_t row = config->row;
-    size_t col = config->col;
 
     size_t size = 1;
     switch (config->dtype)
@@ -114,29 +112,34 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_conf
         case MLIF_DTYPE_RAW:
         default: size = 1; break;
     }
-
-    if (mode == MLIF_STDIO_PLAIN)
+    for (size_t i = 0; i < config->ndim; i++)
     {
-        char header[20] = "";
-        char num_char[10] = "";
-        const char tail[] = "\n";
-        for (size_t i = 0; i < row; i++)
+        size *= config->shape[i];   // single input size in bytes
+    }
+
+    if (iomode == MLIF_STDIO_PLAIN)
+    {
+        fprintf(stdout, "Batch[%zu]:\n", ibatch);
+        for (size_t i = 0; i < config->nsample; i++)
         {
-            sprintf(header, "Output[%zu]:", i);
-            fwrite(header, sizeof(char), strlen(header), stdout);
-            for (size_t j = 0; j < col*size; j++)
+            fprintf(stdout, "Output[%zu]:", config->nsample * ibatch + i);
+            for (size_t j = 0; j < size; j++)
             {
-                sprintf(num_char, " 0x%02x", ((unsigned char *)data)[col*size*i+j]);
-                fwrite(num_char, sizeof(char), strlen(num_char), stdout);
+                fprintf(stdout, " 0x%02x", ((uint8_t *)data)[i*size+j]);
             }
-            fwrite(tail, sizeof(char), 1, stdout);
+            fprintf(stdout, "\n");
             fflush(stdout);
         }
     }
-    else if (mode == MLIF_STDIO_BIN)
+    else if (iomode == MLIF_STDIO_BIN)
     {
-        fwrite(data, sizeof(char), row * col * size, stdout);
-        fflush(stdout);
+        for (size_t i = 0; i < config->nsample; i++)
+        {
+            fprintf(stdout, "-?-");
+            fwrite(data+i*size, sizeof(uint8_t), size, stdout);
+            fprintf(stdout, "-!-");
+            fflush(stdout);
+        }
     }
     else
     {
@@ -242,7 +245,7 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
  * @param data Data pointer.
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, mlif_data_config *config, void *data)
+MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode iomode, mlif_data_config *config, void *data)
 {
     char buffer[BUFFER_SIZE];
     char *token;
@@ -252,7 +255,7 @@ MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, mlif_data_config *c
     // plain text should looks like:
     // 10,20,30,40,15,25,10,23,255,255,10
     // 13,15,12,98,22,33,95,69,0,0,122,243
-    if (mode == MLIF_STDIO_PLAIN)
+    if (iomode == MLIF_STDIO_PLAIN)
     {
         while (fgets(buffer, sizeof(buffer), stdin) != NULL)
         {
@@ -270,7 +273,7 @@ MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, mlif_data_config *c
         config->row = (cnt > 0) ? cnt : 1;
         fflush(stdin);
     }
-    else if (mode == MLIF_STDIO_BIN)
+    else if (iomode == MLIF_STDIO_BIN)
     {
         // can only process one input each invokation
         // for multi-input need more information: end of input...

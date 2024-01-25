@@ -43,7 +43,7 @@ typedef enum data_order
 typedef struct data_config
 {
     size_t nbatch;
-    size_t ninput;
+    size_t nsample;
     size_t ndim;
     size_t *shape;
     size_t row;
@@ -65,8 +65,8 @@ typedef enum file_mode
 }mlif_file_mode;
 
 MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode mode, const char *npy_file_path, const mlif_data_config *config, const void *data);
-MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode mode, const mlif_data_config *config, const void *data);
+MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_config *config, const void *data, const size_t ibatch);
 MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_path, mlif_data_config *config, void *data);
-MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode mode, mlif_data_config *config, void *data);
+MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode iomode, mlif_data_config *config, void *data);
 
 #endif
