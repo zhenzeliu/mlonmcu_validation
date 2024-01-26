@@ -3,6 +3,9 @@
 #define BUFFER_SIZE 2048
 #define NPY_HEADER_SIZE 128
 
+inline static int dtype2size(const mlif_data_config *config, size_t *size);
+inline static int dtype2type(const mlif_data_config *config, char *type);
+
 /**
  * @brief Interface writing 2-dimensional data to file (.npy or .bin format)
  * 
@@ -16,21 +19,11 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
 
-    int size = 1;
-    int dsize = 1;
+    size_t size = 1;
+    size_t dsize = 1;
     char type = 'V';
-    switch (config->dtype)
-    {
-        case MLIF_DTYPE_INT8: type = 'i'; size = 1; break;
-        case MLIF_DTYPE_INT16: type = 'i'; size = 2; break;
-        case MLIF_DTYPE_INT32: type = 'i'; size = 4; break;
-        case MLIF_DTYPE_UINT8: type = 'u'; size = 1; break;
-        case MLIF_DTYPE_UINT16: type = 'u'; size = 2; break;
-        case MLIF_DTYPE_UINT32: type = 'u'; size = 4; break;
-        case MLIF_DTYPE_FLOAT: type = 'f'; size = 4; break;
-        case MLIF_DTYPE_RAW:
-        default: type = 'V'; size = 1; break;
-    }
+    dtype2size(config, &size);
+    dtype2type(config, &type);
     dsize = size;
     for (size_t i = 0; i < config->ndim; i++)
     {
@@ -54,7 +47,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
             // write header information to .npy file
             fwrite(magic_string, sizeof(int8_t), 8, fp);
             fwrite(&length, sizeof(int8_t), 2, fp);
-            fprintf(fp, "{'descr': '<%c%d', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->nsample / config->nbatch);
+            fprintf(fp, "{'descr': '<%c%zu', 'fortran_order': %s, 'shape': (%zu, %zu, ", type, dsize, order, config->nbatch, config->nsample / config->nbatch);
             for (size_t i = 0; i < config->ndim; i++)
                 fprintf(fp, "%zu, ", config->shape[i]);
             fseek(fp, -2, SEEK_CUR);
@@ -100,18 +93,7 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_co
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
 
     size_t size = 1;
-    switch (config->dtype)
-    {
-        case MLIF_DTYPE_INT8: size = 1; break;
-        case MLIF_DTYPE_INT16: size = 2; break;
-        case MLIF_DTYPE_INT32: size = 4; break;
-        case MLIF_DTYPE_UINT8: size = 1; break;
-        case MLIF_DTYPE_UINT16: size = 2; break;
-        case MLIF_DTYPE_UINT32: size = 4; break;
-        case MLIF_DTYPE_FLOAT: size = 4; break;
-        case MLIF_DTYPE_RAW:
-        default: size = 1; break;
-    }
+    dtype2size(config, &size);
     for (size_t i = 0; i < config->ndim; i++)
     {
         size *= config->shape[i];   // single input size in bytes
@@ -227,18 +209,7 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
     else if (fmode == MLIF_FILE_BIN)
     {
         size_t size = 1;
-        switch (config->dtype)
-        {
-            case MLIF_DTYPE_INT8: size = 1; break;
-            case MLIF_DTYPE_INT16: size = 2; break;
-            case MLIF_DTYPE_INT32: size = 4; break;
-            case MLIF_DTYPE_UINT8: size = 1; break;
-            case MLIF_DTYPE_UINT16: size = 2; break;
-            case MLIF_DTYPE_UINT32: size = 4; break;
-            case MLIF_DTYPE_FLOAT: size = 4; break;
-            case MLIF_DTYPE_RAW:
-            default: size = 1; break;
-        }
+        dtype2size(config, &size);
         for (size_t i = 0; i < config->ndim; i++)
         {
             size *= config->shape[i];   // single input size in bytes
@@ -308,4 +279,40 @@ MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode iomode, mlif_data_config 
         return MLIF_IO_ERROR;
     }
     return MLIF_IO_SUCCESS;
+}
+
+inline static int dtype2size(const mlif_data_config *config, size_t *size)
+{
+    if ((size == NULL) || (config == NULL)) return 1;
+    switch (config->dtype)
+    {
+        case MLIF_DTYPE_INT8: *size = 1; break;
+        case MLIF_DTYPE_INT16: *size = 2; break;
+        case MLIF_DTYPE_INT32: *size = 4; break;
+        case MLIF_DTYPE_UINT8: *size = 1; break;
+        case MLIF_DTYPE_UINT16: *size = 2; break;
+        case MLIF_DTYPE_UINT32: *size = 4; break;
+        case MLIF_DTYPE_FLOAT: *size = 4; break;
+        case MLIF_DTYPE_RAW:
+        default: *size = 1; break;
+    }
+    return 0;
+}
+
+inline static int dtype2type(const mlif_data_config *config, char *type)
+{
+    if ((type == NULL) || (config == NULL)) return 1;
+    switch (config->dtype)
+    {
+        case MLIF_DTYPE_INT8: *type = 'i'; break;
+        case MLIF_DTYPE_INT16: *type = 'i'; break;
+        case MLIF_DTYPE_INT32: *type = 'i'; break;
+        case MLIF_DTYPE_UINT8: *type = 'u'; break;
+        case MLIF_DTYPE_UINT16: *type = 'u'; break;
+        case MLIF_DTYPE_UINT32: *type = 'u'; break;
+        case MLIF_DTYPE_FLOAT: *type = 'f'; break;
+        case MLIF_DTYPE_RAW:
+        default: *type = 'V'; break;
+    }
+    return 0;
 }
