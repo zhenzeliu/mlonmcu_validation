@@ -5,20 +5,20 @@
 
 inline static int dtype2size(const mlif_data_config *config, size_t *size);
 inline static int dtype2type(const mlif_data_config *config, char *type);
-inline static int get_input_size(const mlif_data_config *config, size_t *size);
+inline static int get_data_size(const mlif_data_config *config, size_t *size);
 
 /**
  * @brief Interface writing 2-dimensional data to file (.npy or .bin format)
  * 
  * @param fmode Either MLIF_FILE_BIN or MLIF_FILE_NPY.
- * @param file_path Path including file name and suffix to store.
+ * @param file_path Path including file name and suffix.
  * @param config Data configuration which contains datatype, shape and further informations.
- * @param data Data pointer
+ * @param data Data pointer.
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path, const mlif_data_config *config, const void *data)
+MLIF_IO_STATUS mlifio_to_file(const MLIF_FILE_MODE fmode, const char *file_path, const mlif_data_config *config, const void *data)
 {
-    if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
+    if ((config == NULL) || (data == NULL) || (strlen(file_path) == 0)) return MLIF_IO_ERROR;
 
     size_t size = 1;
     size_t dsize = 1;
@@ -26,7 +26,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
     dtype2size(config, &size);
     dtype2type(config, &type);
     dsize = size;
-    get_input_size(config, &size);
+    get_data_size(config, &size);   // get how many bytes in one input/output
 
     if (fmode == MLIF_FILE_NPY)
     {
@@ -60,7 +60,6 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
             fwrite(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
             fclose(fp);
         }
-        
     }
     else if (fmode == MLIF_FILE_BIN)
     {
@@ -71,7 +70,7 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
     }
     else
     {
-        return MLIF_IO_ERROR;
+        return MLIF_IO_UNSUPPORTED;
     }
     
     return MLIF_IO_SUCCESS;
@@ -86,13 +85,13 @@ MLIF_IO_STATUS mlifio_to_file(const mlif_file_mode fmode, const char *file_path,
  * @param ibatch Batch indicator to show that the interface is playing with i-th batch
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_config *config, const void *data, const size_t ibatch)
+MLIF_IO_STATUS mlifio_to_stdout(const MLIF_STDIO_MODE iomode, const mlif_data_config *config, const void *data, const size_t ibatch)
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
 
     size_t size = 1;
     dtype2size(config, &size);
-    get_input_size(config, &size);
+    get_data_size(config, &size);
 
     if (iomode == MLIF_STDIO_PLAIN)
     {
@@ -120,7 +119,7 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_co
     }
     else
     {
-        return MLIF_IO_ERROR;
+        return MLIF_IO_UNSUPPORTED;
     }
     
     return MLIF_IO_SUCCESS;
@@ -130,14 +129,16 @@ MLIF_IO_STATUS mlifio_to_stdout(const mlif_stdio_mode iomode, const mlif_data_co
  * @brief Interface get 2-dimensional input data via file system (.npy or .bin)
  * 
  * @param fmode Either MLIF_FILE_BIN or MLIF_FILE_NPY.
- * @param file_path Path including file name and suffix to store.
+ * @param file_path Path including file name and suffix.
  * @param config Data configuration which contains datatype, shape and further informations.
- * @param data Data pointer
- * @param idx Index of inputs
+ * @param data Data pointer.
+ * @param idx Index of inputs.
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_path, mlif_data_config *config, void *data, const size_t idx)
+MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_path, mlif_data_config *config, void *data, const size_t idx)
 {
+    if ((config == NULL) || (data == NULL) || (strlen(file_path) == 0)) return MLIF_IO_ERROR;
+
     const char mode[] = "rb";
     char dtype[3];
 
@@ -165,10 +166,10 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
         else if (!strcmp(dtype, "u1")) {config->dtype = MLIF_DTYPE_UINT8; size = 1;}
         else if (!strcmp(dtype, "u2")) {config->dtype = MLIF_DTYPE_UINT16; size = 2;}
         else if (!strcmp(dtype, "u4")) {config->dtype = MLIF_DTYPE_UINT32; size = 4;}
-        else if (!strcmp(dtype, "f4")) {config->dtype = MLIF_DTYPE_FLOAT; size = 4;}
+        else if (!strcmp(dtype, "f4")) {config->dtype = MLIF_DTYPE_FLOAT32; size = 4;}
         else {config->dtype = MLIF_DTYPE_RAW; size = 1;}
         
-        get_input_size(config, &size);
+        get_data_size(config, &size);
         fseek(fp, 20, SEEK_CUR);
         if (fgetc(fp) == 'F') config->order = MLIF_C_ORDER;
         else config->order = MLIF_FORTRAN_ORDER;
@@ -202,7 +203,7 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
     {
         size_t size = 1;
         dtype2size(config, &size);
-        get_input_size(config, &size);
+        get_data_size(config, &size);
         FILE *fp = NULL;
         fp = fopen(file_path, mode);
         if (fp == NULL) return MLIF_IO_ERROR;
@@ -214,7 +215,7 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
     }
     else
     {
-        return MLIF_IO_ERROR;
+        return MLIF_IO_UNSUPPORTED;
     }
 
     return MLIF_IO_SUCCESS;
@@ -228,15 +229,16 @@ MLIF_IO_STATUS mlifio_from_file(const mlif_file_mode fmode, const char *file_pat
  * @param data Data pointer.
  * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
  */
-MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode iomode, mlif_data_config *config, void *data)
+MLIF_IO_STATUS mlifio_from_stdin(const MLIF_STDIO_MODE iomode, mlif_data_config *config, void *data)
 {
     char buffer[BUFFER_SIZE];
     char *token;
+    int num = 0;
     int cnt = 0;
     int ptr = 0;
     size_t size = 1;
     dtype2size(config, &size);
-    get_input_size(config, &size);
+    get_data_size(config, &size);
     // plain text in decimal should looks like:
     // 10,20,30,40,15,25,10,23,255,255,10
     // 13,15,12,98,22,33,95,69,0,0,122,243
@@ -244,28 +246,32 @@ MLIF_IO_STATUS mlifio_from_stdin(const mlif_stdio_mode iomode, mlif_data_config 
     {
         while (fgets(buffer, sizeof(buffer), stdin) != NULL)
         {
-            if ((strcmp(buffer, "\n") == 0) || cnt == config->nsample) break;
+            if (strcmp(buffer, "\n") == 0) break;           // If a blank line or '\n' fed to stdin then quit
             ptr = 0;
             token = strtok(buffer, ",");
             while (token != NULL)
             {
-                ((uint8_t *)data)[cnt * size + ptr] = (uint8_t)atoi(token);
+                num = atoi(token);
+                num = num < INT8_MIN ? INT8_MIN : num;
+                num = num > INT8_MAX ? INT8_MAX : num;      // Limits input number into [-128, 127)
+                ((int8_t *)data)[cnt * size + ptr] = (int8_t)num;
                 token = strtok(NULL, ",");
                 ptr++;
             }
             cnt++;
+            if (cnt == config->nsample / config->nbatch) break; // Or if input number has already reach the limit then quit
         }
         fflush(stdin);
     }
     else if (iomode == MLIF_STDIO_BIN)
     {
         // read all input at once
-        fread(data, sizeof(uint8_t), size * config->nsample, stdin);
+        fread(data, sizeof(uint8_t), size * (config->nsample / config->nbatch), stdin);
         fflush(stdin);
     }
     else
     {
-        return MLIF_IO_ERROR;
+        return MLIF_IO_UNSUPPORTED;
     }
 
     return MLIF_IO_SUCCESS;
@@ -282,7 +288,7 @@ inline static int dtype2size(const mlif_data_config *config, size_t *size)
         case MLIF_DTYPE_UINT8: *size = 1; break;
         case MLIF_DTYPE_UINT16: *size = 2; break;
         case MLIF_DTYPE_UINT32: *size = 4; break;
-        case MLIF_DTYPE_FLOAT: *size = 4; break;
+        case MLIF_DTYPE_FLOAT32: *size = 4; break;
         case MLIF_DTYPE_RAW:
         default: *size = 1; break;
     }
@@ -300,14 +306,14 @@ inline static int dtype2type(const mlif_data_config *config, char *type)
         case MLIF_DTYPE_UINT8: *type = 'u'; break;
         case MLIF_DTYPE_UINT16: *type = 'u'; break;
         case MLIF_DTYPE_UINT32: *type = 'u'; break;
-        case MLIF_DTYPE_FLOAT: *type = 'f'; break;
+        case MLIF_DTYPE_FLOAT32: *type = 'f'; break;
         case MLIF_DTYPE_RAW:
         default: *type = 'V'; break;
     }
     return 0;
 }
 
-inline static int get_input_size(const mlif_data_config *config, size_t *size)
+inline static int get_data_size(const mlif_data_config *config, size_t *size)
 {
     for (size_t i = 0; i < config->ndim; i++)
     {
