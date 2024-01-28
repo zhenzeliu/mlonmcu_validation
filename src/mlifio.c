@@ -14,7 +14,7 @@ inline static int get_data_size(const mlif_data_config *config, size_t *size);
  * @param file_path Path including file name and suffix.
  * @param config Data configuration which contains datatype, shape and further informations.
  * @param data Data pointer.
- * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ * @return MLIF_IO_STATUS Indicates execution status.
  */
 MLIF_IO_STATUS mlifio_to_file(const MLIF_FILE_MODE fmode, const char *file_path, const mlif_data_config *config, const void *data)
 {
@@ -26,7 +26,7 @@ MLIF_IO_STATUS mlifio_to_file(const MLIF_FILE_MODE fmode, const char *file_path,
     dtype2size(config, &size);
     dtype2type(config, &type);
     dsize = size;
-    get_data_size(config, &size);   // get how many bytes in one input/output
+    get_data_size(config, &size);   // get how many bytes in a single input/output
 
     if (fmode == MLIF_FILE_NPY)
     {
@@ -83,7 +83,7 @@ MLIF_IO_STATUS mlifio_to_file(const MLIF_FILE_MODE fmode, const char *file_path,
  * @param config Data configuration which contains datatype, shape and further informations.
  * @param data Data pointer.
  * @param ibatch Batch indicator to show that the interface is playing with i-th batch
- * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ * @return MLIF_IO_STATUS Indicates execution status.
  */
 MLIF_IO_STATUS mlifio_to_stdout(const MLIF_STDIO_MODE iomode, const mlif_data_config *config, const void *data, const size_t ibatch)
 {
@@ -132,10 +132,10 @@ MLIF_IO_STATUS mlifio_to_stdout(const MLIF_STDIO_MODE iomode, const mlif_data_co
  * @param file_path Path including file name and suffix.
  * @param config Data configuration which contains datatype, shape and further informations.
  * @param data Data pointer.
- * @param idx Index of inputs.
- * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ * @param ibatch Batch indicator to show that the interface is playing with i-th batch
+ * @return MLIF_IO_STATUS Indicates execution status.
  */
-MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_path, mlif_data_config *config, void *data, const size_t idx)
+MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_path, mlif_data_config *config, void *data, const size_t ibatch)
 {
     if ((config == NULL) || (data == NULL) || (strlen(file_path) == 0)) return MLIF_IO_ERROR;
 
@@ -153,7 +153,7 @@ MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_pat
 
         FILE *fp = NULL;
         fp = fopen(file_path, mode);
-        if (fp == NULL) return MLIF_IO_ERROR;
+        if (fp == NULL) return MLIF_IO_FILE_NOT_EXIST;
         fseek(fp, 8, SEEK_SET);         // jump over the dummy bytes
         fread(header_length, sizeof(char), 2, fp);
         offset = header_length[0] + 256 * header_length[1];
@@ -195,7 +195,7 @@ MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_pat
             else
                 config->nsample = atoi(buffer) * config->nbatch;
         }
-        fseek(fp, offset + 10 + idx * size, SEEK_SET);
+        fseek(fp, offset + 10 + ibatch * size * (config->nsample / config->nbatch), SEEK_SET);
         fread(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
         fclose(fp);
     }
@@ -206,11 +206,11 @@ MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_pat
         get_data_size(config, &size);
         FILE *fp = NULL;
         fp = fopen(file_path, mode);
-        if (fp == NULL) return MLIF_IO_ERROR;
-        fseek(fp, 0, SEEK_END);
-        config->nsample = ftell(fp) / size;
-        fseek(fp, idx * size, SEEK_SET);
-        fread(data, sizeof(int8_t), size, fp);
+        if (fp == NULL) return MLIF_IO_FILE_NOT_EXIST;
+        // fseek(fp, 0, SEEK_END);
+        // config->nsample = ftell(fp) / size;
+        fseek(fp, ibatch * size * (config->nsample / config->nbatch), SEEK_SET);
+        fread(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
         fclose(fp);
     }
     else
@@ -227,10 +227,12 @@ MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_pat
  * @param mode Either MLIF_STDIO_BIN or MLIF_STDIO_PLAIN.
  * @param config config Data configuration which contains datatype, shape and further informations.
  * @param data Data pointer.
- * @return MLIF_IO_STATUS Either MLIF_IO_ERROR or MLIF_IO_SUCCESS.
+ * @return MLIF_IO_STATUS Indicates execution status.
  */
 MLIF_IO_STATUS mlifio_from_stdin(const MLIF_STDIO_MODE iomode, mlif_data_config *config, void *data)
 {
+    if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
+    
     char buffer[BUFFER_SIZE];
     char *token;
     int num = 0;

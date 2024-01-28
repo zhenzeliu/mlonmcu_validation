@@ -7,14 +7,15 @@
 #include <string.h>
 #include <stdint.h>
 
-typedef enum io_status
+typedef enum
 {
     MLIF_IO_SUCCESS,
     MLIF_IO_UNSUPPORTED,
+    MLIF_IO_FILE_NOT_EXIST,
     MLIF_IO_ERROR
 }MLIF_IO_STATUS;
 
-typedef enum datatype
+typedef enum
 {
     MLIF_DTYPE_INT8,
     MLIF_DTYPE_INT16,
@@ -27,14 +28,14 @@ typedef enum datatype
 }MLIF_DATATYPE;
 
 // data storage order
-typedef enum data_order
+typedef enum
 {
     MLIF_C_ORDER,       // row first
     MLIF_FORTRAN_ORDER  // column first
 }MLIF_DATA_ORDER;
 
 // data configuration
-typedef struct data_config
+typedef struct
 {
     size_t nbatch;
     size_t nsample;
@@ -44,13 +45,13 @@ typedef struct data_config
     MLIF_DATA_ORDER order;
 }mlif_data_config;
 
-typedef enum stdio_mode
+typedef enum
 {
     MLIF_STDIO_BIN,
     MLIF_STDIO_PLAIN
 }MLIF_STDIO_MODE;
 
-typedef enum file_mode
+typedef enum
 {
     MLIF_FILE_NPY,
     MLIF_FILE_BIN
@@ -58,7 +59,7 @@ typedef enum file_mode
 
 MLIF_IO_STATUS mlifio_to_file(const MLIF_FILE_MODE fmode, const char *npy_file_path, const mlif_data_config *config, const void *data);
 MLIF_IO_STATUS mlifio_to_stdout(const MLIF_STDIO_MODE iomode, const mlif_data_config *config, const void *data, const size_t ibatch);
-MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_path, mlif_data_config *config, void *data, const size_t idx);
+MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_path, mlif_data_config *config, void *data, const size_t ibatch);
 MLIF_IO_STATUS mlifio_from_stdin(const MLIF_STDIO_MODE iomode, mlif_data_config *config, void *data);
 
 #endif
