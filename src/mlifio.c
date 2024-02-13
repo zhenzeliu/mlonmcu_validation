@@ -138,16 +138,24 @@ MLIF_IO_STATUS mlifio_to_stdout(const MLIF_STDIO_MODE iomode, const mlif_data_co
 MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_path, mlif_data_config *config, void *data, const size_t ibatch)
 {
     if ((config == NULL) || (data == NULL) || (strlen(file_path) == 0)) return MLIF_IO_ERROR;
-
+    
+    // get input file size
+    struct stat stat_buffer = {};
+    stat(file_path, &stat_buffer);
+    
     const char mode[] = "rb";
     char dtype[3];
 
     if (fmode == MLIF_FILE_NPY)
     {
+        if (stat_buffer.st_size <= NPY_HEADER_SIZE) return MLIF_IO_ERROR;
+
         int cnt;
         char tmp;
         char buffer[10] = {};
         size_t size = 1;
+        size_t read_size = 0;
+        size_t read_ptr = 0;
         short offset = 0;
         char header_length[2] = {};
 
@@ -195,22 +203,42 @@ MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_pat
             else
                 config->nsample = atoi(buffer) * config->nbatch;
         }
-        fseek(fp, offset + 10 + ibatch * size * (config->nsample / config->nbatch), SEEK_SET);
-        fread(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
+        
+        read_size = size * (config->nsample / config->nbatch);
+        read_ptr = offset + 10 + ibatch * read_size;
+        // check if this batch can be succcessfully read out
+        if (read_ptr >= stat_buffer.st_size) return MLIF_IO_ERROR;
+        if ((read_ptr + read_size) > stat_buffer.st_size)
+        {
+            read_size = stat_buffer.st_size - read_ptr;
+        }
+
+        fseek(fp, read_ptr, SEEK_SET);
+        fread(data, sizeof(int8_t), read_size, fp);
         fclose(fp);
     }
     else if (fmode == MLIF_FILE_BIN)
     {
         size_t size = 1;
+        size_t read_size = 0;
+        size_t read_ptr = 0;
         dtype2size(config, &size);
         get_data_size(config, &size);
         FILE *fp = NULL;
         fp = fopen(file_path, mode);
         if (fp == NULL) return MLIF_IO_FILE_NOT_EXIST;
-        // fseek(fp, 0, SEEK_END);
-        // config->nsample = ftell(fp) / size;
-        fseek(fp, ibatch * size * (config->nsample / config->nbatch), SEEK_SET);
-        fread(data, sizeof(int8_t), size * (config->nsample / config->nbatch), fp);
+
+        read_size = size * (config->nsample / config->nbatch);
+        read_ptr = ibatch * read_size;
+        // check if this batch can be succcessfully read out
+        if (read_ptr >= stat_buffer.st_size) return MLIF_IO_ERROR;
+        if ((read_ptr + read_size) > stat_buffer.st_size)
+        {
+            read_size = stat_buffer.st_size - read_ptr;
+        }
+
+        fseek(fp, read_ptr, SEEK_SET);
+        fread(data, sizeof(int8_t), read_size, fp);
         fclose(fp);
     }
     else
@@ -233,7 +261,7 @@ MLIF_IO_STATUS mlifio_from_stdin(const MLIF_STDIO_MODE iomode, mlif_data_config 
 {
     if ((config == NULL) || (data == NULL)) return MLIF_IO_ERROR;
     
-    char buffer[BUFFER_SIZE];
+    static char buffer[BUFFER_SIZE];
     char *token;
     int num = 0;
     int cnt = 0;
@@ -246,6 +274,7 @@ MLIF_IO_STATUS mlifio_from_stdin(const MLIF_STDIO_MODE iomode, mlif_data_config 
     // 13,15,12,98,22,33,95,69,0,0,122,243
     if (iomode == MLIF_STDIO_PLAIN)
     {
+        memset(buffer, 0, sizeof(buffer));
         while (fgets(buffer, sizeof(buffer), stdin) != NULL)
         {
             if (strcmp(buffer, "\n") == 0) break;           // If a blank line or '\n' fed to stdin then quit
