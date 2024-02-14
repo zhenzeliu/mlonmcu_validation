@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 typedef enum

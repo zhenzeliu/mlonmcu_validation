@@ -139,6 +139,8 @@ MLIF_IO_STATUS mlifio_from_file(const MLIF_FILE_MODE fmode, const char *file_pat
 {
     if ((config == NULL) || (data == NULL) || (strlen(file_path) == 0)) return MLIF_IO_ERROR;
     
+    if (access(file_path, F_OK) != 0 ) return MLIF_IO_FILE_NOT_EXIST;
+
     // get input file size
     struct stat stat_buffer = {};
     stat(file_path, &stat_buffer);
