@@ -30,7 +30,7 @@ def load_bin(path: str) -> np.ndarray:
         res = fp.read()
     return np.frombuffer(res, dtype=np.int8)
 
-class Verifier:
+class Validator:
 
     def __init__(self, model_info_path: str) -> None:
         self.tol = None
@@ -91,7 +91,7 @@ class Verifier:
         return True if sim >= minsim else False
 
 if __name__ == "__main__":
-    v = Verifier("model_info.yml")
+    v = Validator("model_info.yml")
     data = load_bin("out.bin")
     data_f = v.dequantize(data)
 

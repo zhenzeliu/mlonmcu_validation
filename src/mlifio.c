@@ -35,7 +35,7 @@ MLIF_IO_STATUS mlifio_to_file(const MLIF_FILE_MODE fmode, const char *file_path,
         if (fp == NULL)
         {
             fp = fopen(file_path, "wb+");
-            const int8_t magic_string[8] = {0x93, 'N', 'U', 'M', 'P', 'Y', 0x01, 0x00};
+            const int8_t magic_string[8] = {(int8_t)0x93, 'N', 'U', 'M', 'P', 'Y', 0x01, 0x00};
             const uint16_t length = NPY_HEADER_SIZE - 10;
             char order[6] = "";
             if (config->order == MLIF_FORTRAN_ORDER)
@@ -112,7 +112,7 @@ MLIF_IO_STATUS mlifio_to_stdout(const MLIF_STDIO_MODE iomode, const mlif_data_co
         for (size_t i = 0; i < (config->nsample / config->nbatch); i++)
         {
             fprintf(stdout, "-?-");
-            fwrite(data+i*size, sizeof(uint8_t), size, stdout);
+            fwrite((int8_t *)data+i*size, sizeof(uint8_t), size, stdout);
             fprintf(stdout, "-!-");
             fflush(stdout);
         }
